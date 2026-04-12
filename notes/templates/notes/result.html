@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Note Generator - Result</title>
+    <style>
+        :root {
+            --bg: #f2f6fa;
+            --card: #ffffff;
+            --text: #1f2f3c;
+            --accent: #006a9c;
+            --border: #dce5ed;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #e8f4ff 0%, var(--bg) 60%);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            padding: 2rem 1rem;
+        }
+        .container {
+            width: min(980px, 100%);
+            margin: 0 auto;
+            display: grid;
+            gap: 1rem;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.2rem;
+            box-shadow: 0 12px 24px rgba(0, 106, 156, 0.08);
+        }
+        .meta {
+            color: #587082;
+            font-size: 0.95rem;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.6;
+            margin: 0;
+            font-family: Consolas, "Courier New", monospace;
+        }
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <section class="card">
+            <h1>Notes</h1>
+            <p class="meta">
+                File: <strong>{{ note.original_filename }}</strong><br>
+                Created at: {{ note.created_at }}
+            </p>
+            <p><a href="{% url 'notes:upload' %}">Upload another file</a></p>
+        </section>
+
+        <section class="card">
+            <h2>Summary</h2>
+            <pre>{{ note.summary|default:"No summary available." }}</pre>
+        </section>
+
+        <section class="card">
+            <h2>Extracted Text</h2>
+            <pre>{{ note.extracted_text|default:"No text extracted." }}</pre>
+        </section>
+    </main>
+</body>
+</html>
