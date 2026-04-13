@@ -124,6 +124,8 @@ AWS_COMPREHEND_LANGUAGE = os.getenv('AWS_COMPREHEND_LANGUAGE', 'en')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', '')
 
+SQS_QUEUE_URL = os.getenv('SQS_QUEUE_URL', '')
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

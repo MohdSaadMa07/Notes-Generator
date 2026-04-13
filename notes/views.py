@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from .forms import UploadNoteForm
 from .models import Note
-from .services import AWSProcessingError, process_file, upload_to_s3, validate_file_extension
+from .services import AWSProcessingError, enqueue_note, process_file, upload_to_s3, validate_file_extension
 
 
 def upload_file(request):
@@ -23,6 +23,7 @@ def upload_file(request):
 			note = Note.objects.create(
 				file=uploaded_file,
 				original_filename=uploaded_file.name,
+				status="queued",
 			)
 
 			if not settings.AWS_S3_BUCKET:
@@ -36,9 +37,18 @@ def upload_file(request):
 			try:
 				uploaded_file.seek(0)
 				upload_to_s3(uploaded_file, s3_key)
+
+				if settings.SQS_QUEUE_URL:
+					enqueue_note(note.id, s3_key)
+					note.s3_key = s3_key
+					note.summary = "Queued for processing. Refresh in a moment."
+					note.save(update_fields=["s3_key", "summary"])
+					return redirect("notes:result", note_id=note.id)
+
 				extracted_text, summary = process_file(settings.AWS_S3_BUCKET, s3_key)
 			except AWSProcessingError as exc:
 				note.summary = str(exc)
+				note.status = "failed"
 				note.save(update_fields=["summary"])
 				messages.error(request, str(exc))
 				return redirect("notes:result", note_id=note.id)
@@ -46,7 +56,8 @@ def upload_file(request):
 			note.s3_key = s3_key
 			note.extracted_text = extracted_text
 			note.summary = summary
-			note.save(update_fields=["s3_key", "extracted_text", "summary"])
+			note.status = "done"
+			note.save(update_fields=["s3_key", "extracted_text", "summary", "status"])
 
 			return redirect("notes:result", note_id=note.id)
 	else:

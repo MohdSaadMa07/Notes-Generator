@@ -3,6 +3,7 @@ import time
 import requests
 from pathlib import Path
 import re
+import json
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -26,6 +27,22 @@ def validate_file_extension(file_name: str) -> None:
 
 def get_aws_client(service_name: str):
     return boto3.client(service_name, region_name=settings.AWS_REGION)
+
+
+def enqueue_note(note_id: int, s3_key: str) -> None:
+    if not settings.SQS_QUEUE_URL:
+        raise AWSProcessingError("SQS_QUEUE_URL is not configured.")
+
+    sqs = get_aws_client("sqs")
+    payload = {"note_id": note_id, "s3_key": s3_key}
+    try:
+        sqs.send_message(
+            QueueUrl=settings.SQS_QUEUE_URL,
+            MessageBody=json.dumps(payload),
+        )
+    except (BotoCoreError, ClientError) as exc:
+        logger.exception("SQS enqueue failed: %s", exc)
+        raise AWSProcessingError("Failed to enqueue note for processing.") from exc
 
 
 def upload_to_s3(local_file, key: str) -> str:
@@ -215,6 +232,20 @@ def process_file(bucket: str, key: str) -> tuple[str, str]:
         summary = build_fallback_summary(key_phrases, extracted_text)
 
     return extracted_text, summary
+
+
+def process_note_by_id(note_id: int, s3_key: str) -> None:
+    from .models import Note
+
+    note = Note.objects.get(id=note_id)
+    note.status = "processing"
+    note.save(update_fields=["status"])
+
+    extracted_text, summary = process_file(settings.AWS_S3_BUCKET, s3_key)
+    note.extracted_text = extracted_text
+    note.summary = summary
+    note.status = "done"
+    note.save(update_fields=["extracted_text", "summary", "status"])
 
 
 def clean_extracted_text(text: str) -> str:
